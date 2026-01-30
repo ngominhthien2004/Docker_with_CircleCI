@@ -1,0 +1,104 @@
+version: 2.1
+
+# Define orbs
+orbs:
+  python: circleci/python@2.1.1
+  docker: circleci/docker@2.2.0
+
+# Define jobs
+jobs:
+  # Job 1: Run tests
+  test:
+    docker:
+      - image: cimg/python:3.13
+    steps:
+      - checkout
+      
+      # Install dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            - v1-dependencies-
+      
+      - run:
+          name: Install dependencies
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+      
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+      
+      # Train model for tests
+      - run:
+          name: Train model
+          command: |
+            . venv/bin/activate
+            cd src
+            python train_model.py
+      
+      # Run tests
+      - run:
+          name: Run tests
+          command: |
+            . venv/bin/activate
+            pytest tests/ -v --tb=short
+      
+      # Store test results
+      - store_test_results:
+          path: test-results
+      
+      - store_artifacts:
+          path: test-results
+
+  # Job 2: Build and push Docker image
+  build-and-push:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.14
+          docker_layer_caching: true
+      
+      # Build Docker image
+      - run:
+          name: Build Docker image
+          command: |
+            docker build -t $DOCKERHUB_USERNAME/iris-ml-api:$CIRCLE_SHA1 .
+            docker tag $DOCKERHUB_USERNAME/iris-ml-api:$CIRCLE_SHA1 $DOCKERHUB_USERNAME/iris-ml-api:latest
+      
+      # Login to Docker Hub
+      - run:
+          name: Login to Docker Hub
+          command: |
+            echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USERNAME --password-stdin
+      
+      # Push Docker image
+      - run:
+          name: Push Docker image
+          command: |
+            docker push $DOCKERHUB_USERNAME/iris-ml-api:$CIRCLE_SHA1
+            docker push $DOCKERHUB_USERNAME/iris-ml-api:latest
+
+# Define workflows
+workflows:
+  version: 2
+  build-test-deploy:
+    jobs:
+      # Always run tests
+      - test
+      
+      # Build and push only on main branch and after tests pass
+      - build-and-push:
+          requires:
+            - test
+          filters:
+            branches:
+              only:
+                - main
+                - master
