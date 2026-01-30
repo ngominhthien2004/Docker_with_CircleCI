@@ -69,8 +69,8 @@ jobs:
       - run:
           name: Build Docker image
           command: |
-            docker build -t $DOCKERHUB_USERNAME/iris-ml-api:$CIRCLE_SHA1 .
-            docker tag $DOCKERHUB_USERNAME/iris-ml-api:$CIRCLE_SHA1 $DOCKERHUB_USERNAME/iris-ml-api:latest
+            docker build -t ngominhthien22/iris-ml-api-circleci:$CIRCLE_SHA1 .
+            docker tag ngominhthien22/iris-ml-api-circleci:$CIRCLE_SHA1 ngominhthien22/iris-ml-api-circleci:latest
       
       # Login to Docker Hub
       - run:
@@ -82,8 +82,8 @@ jobs:
       - run:
           name: Push Docker image
           command: |
-            docker push $DOCKERHUB_USERNAME/iris-ml-api:$CIRCLE_SHA1
-            docker push $DOCKERHUB_USERNAME/iris-ml-api:latest
+            docker push ngominhthien22/iris-ml-api-circleci:$CIRCLE_SHA1
+            docker push ngominhthien22/iris-ml-api-circleci:latest
 
 # Define workflows
 workflows:
